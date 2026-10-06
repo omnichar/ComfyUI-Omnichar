@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "omnichar-sdk"
-version = "0.1.0"
+version = "0.1.1"
 description = "Read and build Omnichar .char character files: references, description, prompt and LoRA."
 readme = "README.md"
 license = "Apache-2.0"

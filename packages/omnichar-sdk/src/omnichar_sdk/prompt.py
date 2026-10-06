@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from .charfile import ROLE_BODY, ROLE_CLOTH, ROLE_FACE, ROLES
+from .voice import voice_line
 
 #: The addressing form each model family was trained on.
 STYLES = ("ordinal", "token", "at-image", "description-only")
@@ -53,6 +54,7 @@ def prompt_prefix(
     first_position: int = 1,
     style: str = "ordinal",
     role_lines: bool = False,
+    voice_position: int | None = None,
 ) -> str:
     """Text naming the positions a character lands on, in the form its model was trained on."""
     if style not in STYLES:
@@ -82,6 +84,8 @@ def prompt_prefix(
     line = f"{which} {name}, the same character in every image."
     if role_lines:
         line += _role_lines(name, roles, count, first_position, style)
+    if voice_position is not None:
+        line += voice_line(name, voice_position)
     detail = " ".join(description.split())
     if not detail:
         return f"{line} "

@@ -43,6 +43,8 @@ from .lora import (
 from .prompt import STYLES, prompt_prefix
 from .references import FIT_MODES, SIZE_POLICIES, Reference, allocate_roles, common_size, fit_roles
 from .sheet import reference_sheet, sheet_png
+from .voice import MAX_SECONDS as VOICE_MAX_SECONDS
+from .voice import VOICE_MODES, Voice, drop_voice, set_voice, speaks, wanted
 
 try:
     __version__ = _installed_version("omnichar-sdk")
@@ -51,6 +53,13 @@ except PackageNotFoundError:  # running from a source tree with nothing installe
 
 __all__ = [
     "write",
+    "VOICE_MAX_SECONDS",
+    "VOICE_MODES",
+    "Voice",
+    "drop_voice",
+    "set_voice",
+    "speaks",
+    "wanted",
     "normalise_reference",
     "encode_character",
     "build_payload",

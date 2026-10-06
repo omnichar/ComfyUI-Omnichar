@@ -14,6 +14,7 @@ char.get_description()                       # the locked description
 char.get_references(arch="flux2-klein")      # the compiled reference set, in prompt order
 char.get_lora()                              # the trained adapter, with a portability verdict
 char.get_prompt(style="ordinal")             # text that binds the character to its positions
+char.get_voice()                             # the stored voice clip, or None
 char.save_reference_sheet("ada.png")         # all the references as one numbered PNG
 ```
 
@@ -80,6 +81,18 @@ from omnichar_sdk import encode_character, write
 
 doc = encode_character("Ada", "A woman with short dark hair.", [(face, "face"), (body, "body")])
 write("Ada.char", doc)
+```
+
+To give a character a voice, pass two PCM WAV clips: the sample as recorded, and the mono copy a
+model hears, which needs at least 3 seconds of sound. `wanted` applies Omnichar's rule for when to
+send the voice, which is when the prompt has dialogue:
+
+```python
+from omnichar_sdk import set_voice, wanted
+
+set_voice(doc, sample_wav, mono_wav, source_name="ada.wav")
+if wanted("auto", prompt):
+    text = char.get_prompt(style="token", voice_position=1)
 ```
 
 It does not compute identity vectors. Those need face encoders this package does not ship, so

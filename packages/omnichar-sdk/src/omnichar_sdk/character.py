@@ -18,6 +18,7 @@ from .lora import Lora, measure_portability, read_safetensors_header_stream
 from .prompt import prompt_prefix
 from .references import Reference, fit_roles
 from .sheet import reference_sheet, sheet_png
+from .voice import Voice, voice_of
 
 if TYPE_CHECKING:  # pragma: no cover
     from PIL.Image import Image
@@ -42,6 +43,8 @@ class CharacterInfo:
     created_at: int
     modified_at: int
     size_bytes: int
+    #: Seconds of stored voice, or None. Last and defaulted, so positional construction still works.
+    voice_seconds: float | None = None
 
 
 @contextmanager
@@ -256,7 +259,29 @@ class Character:
             created_at=self.created_at,
             modified_at=self.modified_at,
             size_bytes=self._size_bytes,
+            voice_seconds=voice.seconds if (voice := self.get_voice()) else None,
         )
+
+    def get_voice(self) -> Voice | None:
+        """The character's voice, or None. Only MiniMax H3 Reference to Video reads one."""
+        return voice_of(self._manifest, self._read_voice)
+
+    def _read_voice(self, member: str) -> bytes:
+        """A voice member, its size checked before a byte is decompressed."""
+        from .voice import MAX_PAYLOAD_BYTES, MAX_SAMPLE_BYTES
+
+        cap = MAX_PAYLOAD_BYTES if member.startswith("voice/payload/") else MAX_SAMPLE_BYTES
+        with self._archive() as archive:
+            try:
+                size = archive.getinfo(member).file_size
+            except KeyError:
+                raise self._missing(member) from None
+        if size > cap:
+            raise cf.CharError(
+                f"{self._label}'s voice file {member!r} is {size} bytes, over the {cap} a voice "
+                "can be. Do not use it; get the character from a source you trust."
+            )
+        return self._read(member)
 
     def get_references(
         self,
@@ -420,6 +445,7 @@ class Character:
         role_lines: bool = False,
         count: int | None = None,
         arch: str | None = None,
+        voice_position: int | None = None,
     ) -> str:
         """Prompt text naming the positions this character's references will occupy."""
         refs = self.get_references(arch=arch, limit=count)
@@ -430,6 +456,7 @@ class Character:
             first_position=first_position,
             style=style,
             role_lines=role_lines,
+            voice_position=voice_position if self.get_voice() else None,
         )
 
     def __repr__(self) -> str:
