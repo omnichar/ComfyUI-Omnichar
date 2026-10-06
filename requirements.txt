@@ -1,4 +1,4 @@
 # The upper bound is deliberate. A future 0.2 may change the reader's API, and ComfyUI-Manager
 # installs this file on clone, so an unbounded floor would silently upgrade an old pack into a
 # library it was never written against. Widen it on purpose, not by omission.
-omnichar-sdk>=0.1,<0.2
+omnichar-sdk>=0.1.1,<0.2

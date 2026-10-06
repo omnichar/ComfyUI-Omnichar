@@ -158,7 +158,7 @@ def test_decode_character_gives_conditioning_references_and_a_sheet(pack):
     (char,) = loader.load("Ada.char")
     clip = FakeClip()
 
-    cond, images, refs, sheet, prompt = module.NODE_CLASS_MAPPINGS[
+    cond, images, refs, sheet, prompt, _voice = module.NODE_CLASS_MAPPINGS[
         "OmnicharDecodeCharacter"
     ]().decode(char, "ordinal", clip, "in the rain")
     assert prompt.startswith("Images 1 and 2 show Ada,")
@@ -250,7 +250,7 @@ def test_decode_works_with_no_clip_so_no_checkpoint_is_needed(pack):
     loader = module.NODE_CLASS_MAPPINGS["OmnicharLoadCharacter"]()
     (char,) = loader.load("Ada.char")
 
-    cond, images, refs, sheet, prompt = module.NODE_CLASS_MAPPINGS[
+    cond, images, refs, sheet, prompt, _voice = module.NODE_CLASS_MAPPINGS[
         "OmnicharDecodeCharacter"
     ]().decode(char, "ordinal")
     # Decoding is extraction, so it must not require a model to be loaded first.
@@ -352,7 +352,7 @@ def test_slots_and_prompt_cannot_disagree_about_the_reference_set(pack):
     decode = module.NODE_CLASS_MAPPINGS["OmnicharDecodeCharacter"]()
     pick = module.NODE_CLASS_MAPPINGS["OmnicharCharacterReference"]()
 
-    _, _, refs, _, prompt = decode.decode(char, "token", arch="flux2-klein", max_references=1)
+    _, _, refs, _, prompt, _ = decode.decode(char, "token", arch="flux2-klein", max_references=1)
     # One reference compiled for flux2-klein, so the prompt names exactly one picture and the
     # only valid slot index is 0.
     assert prompt.startswith("<Picture 1> shows Ada,")
@@ -436,3 +436,115 @@ def test_split_matches_picking_each_position_one_at_a_time(pack):
     pick = module.NODE_CLASS_MAPPINGS["OmnicharCharacterReference"]()
     for i in range(2):
         assert torch.equal(split[i], pick.pick(refs, i)[0])
+
+
+# --- a character's voice --------------------------------------------------------------------------
+
+
+def _speech(seconds, rate=24000, silence=0.0, channels=2):
+    """A ComfyUI AUDIO: a tone after ``silence`` seconds of nothing, so the leading cut shows."""
+    import math
+
+    import torch
+
+    total = int((silence + seconds) * rate)
+    t = torch.arange(total) / rate
+    tone = 0.3 * torch.sin(2 * math.pi * 220 * t)
+    tone[: int(silence * rate)] = 0
+    return {"waveform": tone.repeat(channels, 1).unsqueeze(0), "sample_rate": rate}
+
+
+def _voiced(module, seconds=6.0, silence=0.0):
+    import torch
+
+    (char,) = module.NODE_CLASS_MAPPINGS["OmnicharEncodeCharacter"]().encode(
+        "got", "", 512, face=torch.rand(1, 96, 64, 3), voice=_speech(seconds, silence=silence)
+    )
+    return char
+
+
+def test_encode_stores_a_voice_where_omnichar_studio_reads_it(pack):
+    module, _ = pack
+    char = _voiced(module, seconds=6.0, silence=1.5)
+    entry = char.manifest.reserved["voice"]
+    assert entry["samples"][0]["path"] == "voice/samples/000.wav"
+    assert entry["payload"]["path"] == "voice/payload/000.wav"
+    # Studio rebuilds its own payload from the sample rather than trusting this one.
+    assert entry["payload"]["encoder"] == {"id": "h3-voice-wav", "version": "sdk-1"}
+    voice = char.get_voice()
+    assert voice is not None and voice.channels == 1 and voice.sample_rate == 24000
+    assert 6.0 <= voice.seconds < 6.2, "leading silence is cut, with a tenth of a second kept"
+    assert char.get_info().voice_seconds == voice.seconds
+
+
+def test_a_voice_too_short_to_carry_one_is_refused(pack):
+    module, _ = pack
+    from omnichar_sdk import CharError
+
+    with pytest.raises(CharError, match="at least 3s"):
+        _voiced(module, seconds=1.0)
+
+
+def test_the_payload_is_capped_at_thirty_seconds(pack):
+    module, _ = pack
+    voice = _voiced(module, seconds=40.0).get_voice()
+    assert voice is not None and voice.seconds == pytest.approx(30.0, abs=0.01)
+
+
+def _decode(module, char, style="token", prompt='got says "never forget what you are"', **kw):
+    return module.NODE_CLASS_MAPPINGS["OmnicharDecodeCharacter"]().decode(
+        char, style, prompt=prompt, **kw
+    )
+
+
+def test_dialogue_sends_the_voice_and_names_it_in_the_prompt(pack):
+    module, _ = pack
+    *_, prompt, audio = _decode(module, _voiced(module))
+    assert "<Audio 1> is got's voice. got speaks in this voice, lips moving in sync" in prompt
+    assert audio["sample_rate"] == 24000 and audio["waveform"].shape[:2] == (1, 1)
+
+
+def test_a_silent_scene_leaves_the_voice_out(pack):
+    module, _ = pack
+    *_, prompt, audio = _decode(module, _voiced(module), prompt="got walks along the lake")
+    assert audio is None and "<Audio" not in prompt
+
+
+def test_always_and_never_override_the_prompt(pack):
+    module, _ = pack
+    char = _voiced(module)
+    assert _decode(module, char, prompt="got walks", voice="always")[-1] is not None
+    assert _decode(module, char, voice="never")[-1] is None
+
+
+def test_the_voice_position_follows_the_setting(pack):
+    module, _ = pack
+    *_, prompt, _audio = _decode(module, _voiced(module), audio_position=2)
+    assert "<Audio 2> is got's voice." in prompt
+
+
+def test_only_the_h3_style_takes_a_voice(pack):
+    """FLUX.2 has no audio input, so naming <Audio 1> would point at nothing."""
+    module, _ = pack
+    *_, prompt, audio = _decode(module, _voiced(module), style="ordinal")
+    assert audio is None and "<Audio" not in prompt
+
+
+def test_a_character_without_a_voice_decodes_exactly_as_before(pack):
+    module, _ = pack
+    loader = module.NODE_CLASS_MAPPINGS["OmnicharLoadCharacter"]()
+    (char,) = loader.load("Ada.char")
+    assert char.get_voice() is None and char.get_info().voice_seconds is None
+    *_, prompt, audio = _decode(module, char)
+    assert audio is None
+    assert prompt == f'{char.get_prompt(style="token")}got says "never forget what you are"'.strip()
+
+
+def test_a_saved_voice_survives_a_reopen(pack):
+    module, _ = pack
+    saved = module.NODE_CLASS_MAPPINGS["OmnicharSaveCharacter"]().save(_voiced(module), "got")
+    from omnichar_sdk import Character
+
+    reopened = Character.open(saved["result"][0])
+    voice = reopened.get_voice()
+    assert voice is not None and voice.read_wav()[:4] == b"RIFF"

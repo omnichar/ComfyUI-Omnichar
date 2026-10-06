@@ -1,11 +1,11 @@
 [project]
 name = "comfyui-omnichar"
 description = "Build a .char character once and use it across image and video models in ComfyUI."
-version = "0.1.0"
+version = "0.2.0"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
-dependencies = ["omnichar-sdk>=0.1,<0.2"]
+dependencies = ["omnichar-sdk>=0.1.1,<0.2"]
 
 [project.urls]
 Repository = "https://github.com/omnichar/ComfyUI-Omnichar"

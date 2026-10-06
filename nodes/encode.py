@@ -9,15 +9,17 @@ from pathlib import Path
 from omnichar_sdk import (
     FLUX2_KLEIN_ARCH,
     MINIMAX_H3_ARCH,
+    VOICE_MAX_SECONDS,
     Character,
     CharError,
     encode_character,
     safe_output_name,
+    set_voice,
     write,
 )
 
 from . import folders
-from .common import CATEGORY, CHARACTER_INPUT, from_image
+from .common import CATEGORY, CHARACTER_INPUT, audio_to_voice, from_image
 
 logger = logging.getLogger("omnichar")
 
@@ -76,7 +78,18 @@ class OmnicharEncodeCharacter:
                     },
                 ),
             },
-            "optional": _role_inputs(),
+            "optional": {
+                **_role_inputs(),
+                "voice": (
+                    "AUDIO",
+                    {
+                        "tooltip": (
+                            "Optional. About 30 seconds of the character speaking, no music. "
+                            "Only MiniMax H3 Reference to Video uses it."
+                        )
+                    },
+                ),
+            },
         }
 
     RETURN_TYPES = ("CHARACTER",)
@@ -84,11 +97,11 @@ class OmnicharEncodeCharacter:
     FUNCTION = "encode"
     CATEGORY = CATEGORY
     DESCRIPTION = (
-        "Build a character from reference images. Compiles a reference set for FLUX.2 and "
-        "MiniMax H3, so it applies on any model that takes references."
+        "Build a character from reference images, and optionally a voice. Compiles a reference set "
+        "for FLUX.2 and MiniMax H3, so it applies on any model that takes references."
     )
 
-    def encode(self, name, description, resolution, **images):
+    def encode(self, name, description, resolution, voice=None, **images):
         pairs = []
         for slot, role in _ROLE_SLOTS:
             batch = images.get(slot)
@@ -107,6 +120,9 @@ class OmnicharEncodeCharacter:
             archs=(FLUX2_KLEIN_ARCH, MINIMAX_H3_ARCH),
             resolution=resolution or None,
         )
+        if voice is not None:
+            sample, payload = audio_to_voice(voice, VOICE_MAX_SECONDS)
+            set_voice(doc, sample, payload)
         return (Character.from_bytes(_to_bytes(doc), f"{name}.char"),)
 
 

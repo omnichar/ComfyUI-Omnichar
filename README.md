@@ -3,6 +3,8 @@
 Official `.char` integration with ComfyUI. Build a character once, use it across image and
 video models.
 
+Consistent voice is now available for MiniMax H3.
+
 <img src="public/image.png" alt="Omnichar nodes in a ComfyUI graph" width="100%">
 
 A `.char` holds a character's reference images, its locked description, and often a trained LoRA.
@@ -18,6 +20,7 @@ anything else that takes references.
 - **Conditioning**: Wire a CLIP to get conditioning straight out, or take the prompt as text
 - **Trained LoRA**: Applied to MODEL and CLIP when the character carries one
 - **Build Characters**: Encode face, body and wardrobe references into a new `.char`, three slots each
+- **Voice**: Store a short voice clip in the character and send it to MiniMax H3 when the prompt has dialogue
 - **Python Library**: Omnichar's standalone package for `.char` integration, no dependencies
 
 ## Requirements
@@ -58,12 +61,12 @@ and both read the same files.
 | Node | Inputs | Outputs |
 | --- | --- | --- |
 | Load Character | `char`, `char_path` | `char` |
-| Decode Character | `char`, `style`, `clip`, `prompt`, `arch`, `max_references`, `size_from`, `fit` | `conditioning`, `references`, `refs`, `sheet`, `prompt` |
+| Decode Character | `char`, `style`, `clip`, `prompt`, `arch`, `max_references`, `size_from`, `fit`, `voice`, `audio_position` | `conditioning`, `references`, `refs`, `sheet`, `prompt`, `voice` |
 | Character Reference | `refs`, `index` | `image`, `role`, `count` |
 | Character References Split | `refs` | `image_0` to `image_4`, `count` |
 | Character Reference Latent | `conditioning`, `refs`, `vae` | `conditioning` |
 | Apply Character LoRA | `model`, `clip`, `char`, `strength`, `arch`, `min_key_coverage` | `model`, `clip` |
-| Encode Character | `name`, `description`, `resolution`, `face`/`body`/`cloths` (3 slots each) | `char` |
+| Encode Character | `name`, `description`, `resolution`, `face`/`body`/`cloths` (3 slots each), `voice` | `char` |
 | Save Character | `char`, `filename`, `overwrite` | `path` |
 
 ## Guide
@@ -94,11 +97,30 @@ that take one batch read `references`. Models with numbered slots, like MiniMax 
 a Character References Split node, or a Character Reference node per slot. Edit models that read references as latents, like FLUX.2, take
 `refs` into a Character Reference Latent node on both the positive and the negative conditioning.
 
+### Voice
+
+A character can carry a voice for MiniMax H3 Reference to Video. Wire Load Audio into Encode
+Character's `voice` input: about 30 seconds of clean speech, no music. On Decode Character, use the
+`token` style and wire `voice` into the H3 node's `ref_audio_0`.
+
+With `voice` on `auto`, the clip is sent only when the prompt has dialogue:
+
+| Prompt | Voice |
+| --- | --- |
+| `sia faces the camera and says "I built this look one frame at a time."` | sent |
+| `close-up of sia as she whispers to someone off camera` | sent |
+| `sia walks along the lake at dusk` | not sent |
+
+The match is on words, so "no speaking" still counts as dialogue; set `never` for a silent shot
+like that, or `always` to force the voice in. H3 speaks new words in a voice like the clip, so
+expect a likeness rather than a copy.
+
 ### Workflows
 
 - [Build a `.char`](workflows/character_encode.json) from face, body and wardrobe references
 - [FLUX.2 Klein 9B](workflows/flux_klein_9b_image_char.json), references as latents, to an image
 - [MiniMax H3](workflows/minimax_h3_char_video.json), references in numbered slots, to a video
+- [MiniMax H3 with voice](workflows/minimax_h3_char_voice_video.json), the character's voice wired into `ref_audio_0`, to a talking video
 
 ## Python Library
 
