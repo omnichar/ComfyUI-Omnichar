@@ -1,13 +1,43 @@
-# ComfyUI Omnichar Custom Node
-### One .char format for consistent portable characters
+<div align="center">
 
-Official `.char` integration with ComfyUI. Build a character once, use it across image and
-video models. Same face, cloths & body across every model. 
-Currently supports: Minimax H3, Krea2, Flux2 dev, klein9B & 4B. 
+# ComfyUI Omnichar
 
-Consistent voice is now available for MiniMax H3.
+**One `.char` format for consistent, portable characters.**
 
-<img src="public/image.png" alt="Omnichar nodes in a ComfyUI graph" width="100%">
+Official `.char` integration for ComfyUI. Build a character once and keep the same face, body,
+clothes and voice across every model you already use. Currently MiniMax H3, Krea 2, FLUX.2 dev and
+klein 9B / 4B, with consistent voice on MiniMax H3.
+
+[**Install**](#installation) ·
+[**Omnichar Studio**](https://github.com/omnichar/OmniChar) ·
+[**Try it in your browser**](https://cloud.omnichar.org) ·
+[**omnichar-sdk**](packages/omnichar-sdk/README.md) ·
+[**Example workflows**](workflows)
+
+[![Website][website-shield]][website-url]
+[![License: GPLv3][license-shield]][license-url]
+[![Python 3.10+][python-shield]][python-url]
+[![Latest release][release-shield]][release-url]
+<br>
+[![Discord][discord-shield]][discord-url]
+[![Reddit][reddit-shield]][reddit-url]
+
+<img width="1590" alt="Omnichar nodes in a ComfyUI graph" src="https://raw.githubusercontent.com/omnichar/ComfyUI-Omnichar/main/public/image.png" />
+
+</div>
+
+[website-shield]: https://img.shields.io/badge/Website-omnichar.org-blue?style=flat
+[website-url]: https://omnichar.org
+[license-shield]: https://img.shields.io/badge/License-GPLv3-blue?style=flat
+[license-url]: LICENSE
+[python-shield]: https://img.shields.io/badge/Python-3.10%2B-blue?style=flat&logo=python&logoColor=white
+[python-url]: https://www.python.org/downloads/
+[release-shield]: https://img.shields.io/github/v/release/omnichar/ComfyUI-Omnichar?style=flat&label=Release&color=blue
+[release-url]: ../../releases/latest
+[discord-shield]: https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&logoColor=white&style=flat
+[discord-url]: https://discord.gg/cSUS88VdY9
+[reddit-shield]: https://img.shields.io/badge/Reddit-r%2Fomnichar-FF4500?logo=reddit&logoColor=white&style=flat
+[reddit-url]: https://www.reddit.com/r/omnichar/
 
 A `.char` holds a character's reference images, its locked description, and often a trained LoRA.
 Build one here with Encode Character, or in [Omnichar Studio](https://omnichar.org) on your own GPU
