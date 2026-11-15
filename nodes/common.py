@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import time
+import weakref
 from typing import Any
 
 import torch
@@ -19,6 +21,29 @@ REFS = "CHARACTER_REFS"
 REFS_INPUT = (REFS, {"forceInput": True})
 
 CATEGORY = "Omnichar"
+
+NOT_VERIFIED = "This licensed character hasn't been verified. Re-queue to check its license."
+
+#: Character -> monotonic deadline. Kept beside the object, so nothing serialises it or the SDK.
+_verified: weakref.WeakKeyDictionary[Character, float] = weakref.WeakKeyDictionary()
+
+
+def licensed(char: Character) -> Any:
+    """The raw license block, or None. Needs no new SDK, so an old one never runs it unchecked."""
+    return char.manifest.reserved.get("license")
+
+
+def mark_verified(char: Character, deadline: float) -> None:
+    _verified[char] = deadline
+
+
+def require_usable(char: Character) -> None:
+    """Refuse a licensed character that Load Character has not cleared for this run."""
+    if licensed(char) is None:
+        return
+    deadline = _verified.get(char)
+    if deadline is None or time.monotonic() >= deadline:
+        raise CharError(NOT_VERIFIED)
 
 
 def to_image(images: list[Any]) -> torch.Tensor:

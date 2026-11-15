@@ -92,7 +92,7 @@ and both read the same files.
 
 | Node | Inputs | Outputs |
 | --- | --- | --- |
-| Load Character | `char`, `char_path` | `char` |
+| Load Character | `char`, `char_path`, `output` | `char` |
 | Decode Character | `char`, `style`, `clip`, `prompt`, `arch`, `max_references`, `size_from`, `fit`, `voice`, `audio_position` | `conditioning`, `references`, `refs`, `sheet`, `prompt`, `voice` |
 | Character Reference | `refs`, `index` | `image`, `role`, `count` |
 | Character References Split | `refs` | `image_0` to `image_4`, `count` |
@@ -154,6 +154,41 @@ expect a likeness rather than a copy.
 - [MiniMax H3](workflows/minimax_h3_char_video.json), references in numbered slots, to a video
 - [Build a `.char` with a voice](workflows/voice/encode_char_with_voice.json), a face reference plus a voice clip from Load Audio
 - [MiniMax H3 with voice](workflows/voice/generate_with_voice_minimaxh3.json), the character's voice wired into `ref_audio_0`, to a talking video
+- [FLUX.2 Klein 9B with a licensed character](workflows/flux_klein_9b_image_licensed_char.json), the FLUX.2 graph with a note on entering the license secret
+
+### Licensed characters
+
+A character licensed to you in Omnichar Cloud carries its license inside the `.char`. Before each
+run, Load Character sends the license ID from the file and your license secret to Omnichar, and
+the run goes ahead only if the license is valid for this character and output. The secret comes
+from the provider's share email, or from **Characters → Licensed → Local apps** in Omnichar Cloud.
+
+When you pick a licensed character, Load Character shows a status line and two buttons:
+
+- **Enter secret** opens a box for the secret. It is kept on this machine in
+  `ComfyUI/user/omnichar/licenses.json` (owner-only on Linux and macOS), and never goes into a
+  workflow, an image or a log.
+- **Forget** removes it.
+
+Set `output` (under advanced) to `video` when the character feeds a video model, since a license
+can allow images only.
+
+Each queued run reports one generation to the provider as soon as Load Character clears the
+license. That counts the run even if it fails later, and a batch of several images still counts
+as one. Two Load Character nodes on the same character in one run report once on ComfyUI versions
+that expose the running prompt to nodes; on older versions each node reports.
+
+| Message | What to do |
+| --- | --- |
+| `<name>.char is licensed. Enter the license secret from the share email.` | Click Enter secret and paste it. |
+| `Can't reach OmniChar to check this license. Connect and try again.` | Get online, then queue again. A check from the last few minutes still counts. |
+| `Too many attempts. Try again in a few minutes.` | Wait, then check the secret you entered. |
+| `This licensed character hasn't been verified. Re-queue to check its license.` | Queue again so Load Character checks it. |
+| `Update omnichar-sdk to use licensed characters.` | Run `pip install -U 'omnichar-sdk>=0.1.2,<0.2'` in ComfyUI's environment. |
+| Anything else, such as `This license was revoked by ...` | Omnichar's own reason. Ask the provider. |
+
+Unlicensed characters work as before and never touch the network. Try the
+[licensed FLUX.2 workflow](workflows/flux_klein_9b_image_licensed_char.json).
 
 ## Python Library
 

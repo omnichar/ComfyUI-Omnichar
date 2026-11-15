@@ -9,7 +9,7 @@ import comfy.lora
 import comfy.sd
 from omnichar_sdk import KEY_WRAPPERS, CharChanged, CharError, Portability, module_stem
 
-from .common import CATEGORY, CHARACTER_INPUT, fail_on_change
+from .common import CATEGORY, CHARACTER_INPUT, fail_on_change, require_usable
 
 logger = logging.getLogger("omnichar")
 
@@ -101,6 +101,7 @@ class OmnicharApplyCharacterLoRA:
     )
 
     def apply(self, model, char, strength, clip=None, arch="", min_key_coverage=0.9):
+        require_usable(char)
         try:
             lora = char.get_lora(arch or None)
         except CharChanged as error:

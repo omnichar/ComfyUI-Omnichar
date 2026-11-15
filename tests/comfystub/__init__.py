@@ -1,13 +1,42 @@
 """Enough of ComfyUI to exercise the node pack without a ComfyUI install.
 
-Only the surfaces the pack actually touches: folder_paths, comfy.lora's key maps, and
-comfy.sd.load_lora_for_models. Real ComfyUI is still the thing that proves a workflow runs; this
-proves the logic around it.
+Only the surfaces the pack actually touches: folder_paths, comfy.lora's key maps,
+comfy.sd.load_lora_for_models, and the PromptServer route table the license routes register on.
+Real ComfyUI is still the thing that proves a workflow runs; this proves the logic around it.
 """
 
+import json
+import os
 import sys
 import types
 from pathlib import Path
+
+
+class FakeRoutes:
+    """aiohttp's RouteTableDef, reduced to recording which handler serves which method and path."""
+
+    def __init__(self):
+        self.handlers = {}
+
+    def _add(self, method, path):
+        def register(handler):
+            self.handlers[(method, path)] = handler
+            return handler
+
+        return register
+
+    def get(self, path):
+        return self._add("GET", path)
+
+    def post(self, path):
+        return self._add("POST", path)
+
+    def delete(self, path):
+        return self._add("DELETE", path)
+
+
+def _json_response(data, status=200):
+    return types.SimpleNamespace(status=status, data=data, body=json.dumps(data).encode())
 
 
 class FakeModel:
@@ -41,9 +70,11 @@ class FakeClip:
         return [[f"cond:{tokens['tokens'][:40]}", {}]]
 
 
-def install(models_dir: Path, unet_stems=(), clip_stems=()):
+def install(models_dir: Path, unet_stems=(), clip_stems=(), user_dir: Path | None = None):
     folder_paths = types.ModuleType("folder_paths")
     folder_paths.models_dir = str(models_dir)
+    user = user_dir or models_dir.parent / "user"
+    folder_paths.get_user_directory = lambda: str(user)
     folder_paths.folder_names_and_paths = {"loras": ([str(models_dir / "loras")], {".safetensors"})}
 
     def get_filename_list(category):
@@ -59,10 +90,12 @@ def install(models_dir: Path, unet_stems=(), clip_stems=()):
         return list(folder_paths.folder_names_and_paths[category][0])
 
     def get_full_path(category, name):
+        # As ComfyUI does: rooted then made relative, so "../" and absolute names cannot escape.
+        name = os.path.relpath(os.path.join("/", name), "/")
         for base in get_folder_paths(category):
-            candidate = Path(base) / name
-            if candidate.is_file():
-                return str(candidate)
+            candidate = os.path.join(base, name)
+            if os.path.isfile(candidate):
+                return candidate
         return None
 
     folder_paths.get_filename_list = get_filename_list
@@ -109,7 +142,23 @@ def install(models_dir: Path, unet_stems=(), clip_stems=()):
     comfy.lora = lora
     comfy.sd = sd
 
+    server = types.ModuleType("server")
+    server.PromptServer = types.SimpleNamespace(
+        instance=types.SimpleNamespace(routes=FakeRoutes())
+    )
+    stubs = {}
+    try:
+        import aiohttp.web  # noqa: F401
+    except ImportError:
+        aiohttp = types.ModuleType("aiohttp")
+        web = types.ModuleType("aiohttp.web")
+        web.json_response = _json_response
+        aiohttp.web = web
+        stubs = {"aiohttp": aiohttp, "aiohttp.web": web}
+
     for name, module in {
+        **stubs,
+        "server": server,
         "folder_paths": folder_paths,
         "node_helpers": node_helpers,
         "comfy": comfy,

@@ -32,6 +32,19 @@ from .encode import (
     encode_character,
     normalise_reference,
 )
+from .license import (
+    PRODUCTION_API,
+    SANDBOX_API,
+    License,
+    LicenseError,
+    LicenseRateLimited,
+    LicenseRefused,
+    LicenseUnreachable,
+    Verdict,
+    read_license,
+    report_usage,
+    verify,
+)
 from .lora import (
     KEY_SUFFIXES,
     KEY_WRAPPERS,
@@ -101,4 +114,15 @@ __all__ = [
     "sheet_png",
     "read",
     "safe_output_name",
+    "License",
+    "LicenseError",
+    "LicenseRateLimited",
+    "LicenseRefused",
+    "LicenseUnreachable",
+    "PRODUCTION_API",
+    "SANDBOX_API",
+    "Verdict",
+    "read_license",
+    "report_usage",
+    "verify",
 ]

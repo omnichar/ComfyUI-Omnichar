@@ -99,6 +99,38 @@ It does not compute identity vectors. Those need face encoders this package does
 Omnichar Studio's verify and continuity features stay unavailable until it re-encodes the file.
 Rendering is unaffected.
 
+## Licenses
+
+A `.char` licensed through Omnichar Cloud carries a `reserved.license` block. The `license` module
+reads it and asks Omnichar whether the user's license secret unlocks it. It never edits the block
+and never decides validity itself.
+
+```python
+from omnichar_sdk import LicenseError, read_license, report_usage, verify
+
+found = read_license(char.manifest)          # None for an unlicensed character
+if found is not None:
+    try:
+        verdict = verify(found, found.char_id, secret, "image", "flux-2-klein", "my-app", "1.0")
+    except LicenseError as error:
+        print(error)                            # show it; a refusal is the server's own message
+    else:
+        report_usage(verdict.ticket, "image", "flux-2-klein", "my-app")
+```
+
+`verify` raises `LicenseRefused` (with `.status` and the server's `.message`), `LicenseRateLimited`
+(with `.retry_after`, never retried) or `LicenseUnreachable`. All three are `LicenseError`, which is
+a `CharError`. A valid verdict is cached in memory until its ticket runs out, and any refusal
+clears it, and a cached verdict is reused only while at least two minutes of it remain.
+`report_usage` sends from a background thread, retries a few times, then drops the report with one
+log line; it never raises. Pass `license_id` and `on_refused` to hear when Omnichar refuses a
+ticket, which also clears that license's cached verdicts.
+
+Requests go to `https://api.omnichar.org/v1` with the standard library and a 10-second timeout. An
+`lsk_test_` secret selects the sandbox. `OMNICHAR_LICENSE_API` overrides the address for testing,
+and only when it names this machine (`localhost`, `127.0.0.1` or `::1`). No URL is ever taken from
+the `.char`.
+
 ## Licence
 
 Apache-2.0. The rest of the repository, including the node pack, is GPL-3.0-or-later.

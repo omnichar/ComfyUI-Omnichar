@@ -20,6 +20,7 @@ from .common import (
     CHARACTER_INPUT,
     REFS,
     fail_on_change,
+    require_usable,
     to_image,
     wav_to_audio,
 )
@@ -119,6 +120,7 @@ class OmnicharDecodeCharacter:
         self, char, style, clip=None, prompt="", arch="originals",
         max_references=0, size_from="first", fit="pad", voice="auto", audio_position=1,
     ):
+        require_usable(char)
         try:
             selected = None if arch in ("", "originals") else arch
             refs = char.get_references(

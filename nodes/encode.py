@@ -19,7 +19,7 @@ from omnichar_sdk import (
 )
 
 from . import folders
-from .common import CATEGORY, CHARACTER_INPUT, audio_to_voice, from_image
+from .common import CATEGORY, CHARACTER_INPUT, audio_to_voice, from_image, require_usable
 
 logger = logging.getLogger("omnichar")
 
@@ -170,6 +170,7 @@ class OmnicharSaveCharacter:
         return float("nan")
 
     def save(self, char, filename, overwrite=False):
+        require_usable(char)
         roots = folders.roots()
         if not roots:
             raise CharError(

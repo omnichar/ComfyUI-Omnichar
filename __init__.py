@@ -30,6 +30,13 @@ except ImportError as error:
 else:
     folders.register()
 
+    try:
+        from .nodes import licensing
+
+        licensing.register_routes()
+    except Exception as error:  # the nodes still work; only the license buttons go missing
+        logger.warning("Omnichar license routes are not registered: %s", error)
+
     NODE_CLASS_MAPPINGS = {
         "OmnicharLoadCharacter": OmnicharLoadCharacter,
         "OmnicharDecodeCharacter": OmnicharDecodeCharacter,
