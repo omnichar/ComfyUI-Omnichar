@@ -11,8 +11,8 @@ klein 9B / 4B, with consistent voice on MiniMax H3.
 [**Install**](#installation) ·
 [**Omnichar Studio**](https://github.com/omnichar/OmniChar) ·
 [**Try it in your browser**](https://cloud.omnichar.org) ·
-[**omnichar-sdk**](packages/omnichar-sdk/README.md) ·
-[**Example workflows**](workflows)
+[**How licensing works?**](https://www.omnichar.org/licensing) ·
+[**workflows**](workflows)
 
 [![Website][website-shield]][website-url]
 [![License: GPLv3][license-shield]][license-url]
